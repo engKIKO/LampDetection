@@ -2,7 +2,7 @@ import time
 import cv2
 import edge_impulse_linux
 from edge_impulse_linux.image import ImageImpulseRunner
-from lamp_logger import is_night, log_broken_lamp
+from lampLogger import is_night, log_broken_lamp
 
 
 MODEL_PATH = '/home/thanaphat/Documents/mahidol/IoT/LampDetection/modelfile.eim'
@@ -49,17 +49,46 @@ def main():
                     continue
 
                 # Display results based on model type
-                if model_type == 'classification' and 'classification' in results['result']:
-                    label = max(results['result']['classification'],
-                                key=results['result']['classification'].get)
-                    confidence = results['result']['classification'][label]
-                    print(f"[{lamp_name}] → {label} ({confidence:.2f})")
-                elif model_type == 'object_detection' and 'bounding_boxes' in results['result']:
-                    print(f"[{lamp_name}] → Detections:", results['result']['bounding_boxes'])
-                elif 'anomaly' in results['result']:
-                    print(f"[{lamp_name}] → Anomaly score:", results['result']['anomaly']['score'])
+                # if model_type == 'classification' and 'classification' in results['result']:
+                #     label = max(results['result']['classification'],
+                #                 key=results['result']['classification'].get)
+                #     if is_night(current_hour=20) and label.lower() == "off":
+                #         print("Logging lamp as broken...")
+                #         log_broken_lamp(lamp_id=1, label=label)
+                #     confidence = results['result']['classification'][label]
+                #     print(f"[{lamp_name}] → {label} ({confidence:.2f})")
+                # elif model_type == 'object_detection' and 'bounding_boxes' in results['result']:
+                #     print(f"[{lamp_name}] → Detections:", results['result']['bounding_boxes'])
+                #     if is_night(current_hour=20) and label.lower() == "off":
+                #         log_broken_lamp(lamp_id=1, label=label)
+                # elif 'anomaly' in results['result']:
+                #     print(f"[{lamp_name}] → Anomaly score:", results['result']['anomaly']['score'])
+                # else:
+                #     print(f"[{lamp_name}] → Unexpected result format:", results)
+
+                # Inside your loop after getting results
+                if 'bounding_boxes' in results['result']:
+                    for box in results['result']['bounding_boxes']:
+                        label = box['label']
+                        confidence = box['value']
+                        
+                        print(f"[Lamp1] → Detected: {label} (confidence: {confidence:.2f})")
+
+                        # Check for "off" label during night
+                        if is_night(current_hour=20) and label.lower() == "off":
+                            log_broken_lamp(lamp_id=1, label=label)
+
+                elif 'classification' in results['result']:
+                    # In case you also support classification models
+                    label = max(results['result']['classification'], key=results['result']['classification'].get)
+                    print(f"[Lamp1] → Classification Label: {label}")
+
+                    if is_night(current_hour=20) and label.lower() == "off":
+                        log_broken_lamp(lamp_id=1, label=label)
+
                 else:
-                    print(f"[{lamp_name}] → Unexpected result format:", results)
+                    print(f"[Lamp1] → Unexpected result format: {results}")
+
 
                 # Draw rectangle for the zone on the main frame
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -70,17 +99,6 @@ def main():
             cv2.imshow('Lamp Detection', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-
-            # Check Lamp is broken
-            if 'classification' in results['result']:
-                prediction = results['result']['classification']
-                label = max(prediction, key=prediction.get)
-                print("Prediction:", prediction)
-
-                if is_night() and label.lower() == "off":
-                    log_broken_lamp(lamp_id=1, label=label)
-
-
         cap.release()
         cv2.destroyAllWindows()
         
