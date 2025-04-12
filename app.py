@@ -4,12 +4,22 @@ from edge_impulse_linux.image import ImageImpulseRunner
 
 MODEL_PATH = '/home/thanaphat/Documents/mahidol/IoT/LampDetection/modelfile.eim'
 
+# Define camera zones for each lamp (update these based on your camera layout)
+lamp_zones = {
+    'Lamp1': (0, 0, 160, 120),      # x1, y1, x2, y2
+    # 'Lamp2': (160, 0, 320, 120),
+    # 'Lamp3': (0, 120, 160, 240),
+    # 'Lamp4': (160, 120, 320, 240)
+}
+
 def main():
     with ImageImpulseRunner(MODEL_PATH) as runner:
         model_info = runner.init()
         labels = model_info['model_parameters']['labels']
-
-        cap = cv2.VideoCapture('/dev/video2')   # USB camera (use 1 or IP URL for other sources)
+        model_type = model_info['model_parameters']['model_type']
+        print(f"Model type: {model_type}")
+        
+        cap = cv2.VideoCapture('/dev/video2')  # Change as needed
 
         if not cap.isOpened():
             print("Failed to open camera.")
@@ -23,21 +33,36 @@ def main():
                 print("Failed to grab frame.")
                 break
 
-            features, cropped = runner.get_features_from_image(frame)
-            results = runner.classify(features)
-           
+            # Loop through each defined lamp zone
+            for lamp_name, (x1, y1, x2, y2) in lamp_zones.items():
+                zone_frame = frame[y1:y2, x1:x2]
 
-            if 'classification' in results['result']:
-                print("Prediction:", results['result']['classification'])
-            elif 'bounding_boxes' in results['result']:
-                print("Detections:", results['result']['bounding_boxes'])
-            elif 'anomaly' in results['result']:
-                print("Anomaly score:", results['result']['anomaly']['score'])
-            else:
-                print("Unexpected result format:", results)
-                # Add logic here: threshold, lamp mapping, etc.
+                try:
+                    features, _ = runner.get_features_from_image(zone_frame)
+                    results = runner.classify(features)
+                except Exception as e:
+                    print(f"Error processing {lamp_name}: {e}")
+                    continue
 
-            # Optional: show frame
+                # Display results based on model type
+                if model_type == 'classification' and 'classification' in results['result']:
+                    label = max(results['result']['classification'],
+                                key=results['result']['classification'].get)
+                    confidence = results['result']['classification'][label]
+                    print(f"[{lamp_name}] → {label} ({confidence:.2f})")
+                elif model_type == 'object_detection' and 'bounding_boxes' in results['result']:
+                    print(f"[{lamp_name}] → Detections:", results['result']['bounding_boxes'])
+                elif 'anomaly' in results['result']:
+                    print(f"[{lamp_name}] → Anomaly score:", results['result']['anomaly']['score'])
+                else:
+                    print(f"[{lamp_name}] → Unexpected result format:", results)
+
+                # Draw rectangle for the zone on the main frame
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, lamp_name, (x1 + 5, y1 + 20),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+
+            # Display the full frame with overlays
             cv2.imshow('Lamp Detection', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
