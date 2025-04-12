@@ -1,6 +1,9 @@
+import time
 import cv2
 import edge_impulse_linux
 from edge_impulse_linux.image import ImageImpulseRunner
+from lamp_logger import is_night, log_broken_lamp
+
 
 MODEL_PATH = '/home/thanaphat/Documents/mahidol/IoT/LampDetection/modelfile.eim'
 
@@ -28,6 +31,7 @@ def main():
         print("Starting lamp detection...")
 
         while True:
+            time.sleep(0.2)
             ret, frame = cap.read()
             if not ret:
                 print("Failed to grab frame.")
@@ -67,8 +71,20 @@ def main():
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
+            # Check Lamp is broken
+            if 'classification' in results['result']:
+                prediction = results['result']['classification']
+                label = max(prediction, key=prediction.get)
+                print("Prediction:", prediction)
+
+                if is_night() and label.lower() == "off":
+                    log_broken_lamp(lamp_id=1, label=label)
+
+
         cap.release()
         cv2.destroyAllWindows()
+        
+
 
 if __name__ == '__main__':
     main()
