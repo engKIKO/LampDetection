@@ -2,7 +2,7 @@ import paho.mqtt.client as mqtt
 
 
 # MQTT Broker configuration
-BROKER = 'broker.hivemq.com'  # Or use your own (e.g., Mosquitto or HiveMQ cloud)
+BROKER = 'localhost'  # Or use your own (e.g., Mosquitto or HiveMQ cloud)
 PORT = 1883
 TOPIC_LDR = 'sensor/ldr'
 TOPIC_LOG = 'lamp/logs'
@@ -11,26 +11,36 @@ TOPIC_LOG = 'lamp/logs'
 
 # Low light threshold (e.g., from LDR sensor)
 LDR_THRESHOLD = 300  # Adjust based on your LDR scale
-is_night = False  # Global state updated from LDR
+LDR_is_night = False  # Global state updated from LDR
 
+# Internal state
+_mqtt_state = {
+    'ldr_value': None
+}
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code", rc)
     client.subscribe(TOPIC_LDR)  # Subscribing to LDR topic
 
 def on_message(client, userdata, msg):
-    global is_night
     try:
-        ldr_value = int(msg.payload.decode())
-        print(f"[LDR] Received value: {ldr_value}")
-
-        # Update time-based condition
-        is_night = ldr_value < LDR_THRESHOLD
+        value = int(msg.payload.decode())
+        print(f"[MQTT] LDR received: {value}")
+        _mqtt_state['ldr_value'] = value
     except ValueError:
-        print("Received invalid LDR value.")
+        print("[MQTT] Invalid LDR value")
 
 def publish_log(message):
     print(f"[MQTT] Publishing log: {message}")
     client.publish(TOPIC_LOG, message)
+
+def LDR_is_night():
+    val = _mqtt_state.get('ldr_value')
+    if val is None:
+        return False  # Default if no value received yet
+    return val < LDR_THRESHOLD
+  
+def get_ldr_value():
+    return _mqtt_state.get('ldr_value')
 
 
 client = mqtt.Client()
