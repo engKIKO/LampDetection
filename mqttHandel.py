@@ -36,3 +36,11 @@ def publish_log(message):
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
+
+def start():
+    client.connect(BROKER, PORT, 60)
+    client.loop_start()
+
+def stop():
+    client.loop_stop()
+    client.disconnect()
