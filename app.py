@@ -1,8 +1,10 @@
+from datetime import datetime
 import time
 import cv2
 import edge_impulse_linux
 from edge_impulse_linux.image import ImageImpulseRunner
 from lampLogger import is_night, log_broken_lamp
+from LampDetectionBuffer import LampDetectionBuffer
 
 
 MODEL_PATH = '/home/thanaphat/Documents/mahidol/IoT/LampDetection/modelfile.eim'
@@ -14,6 +16,9 @@ lamp_zones = {
     # 'Lamp3': (0, 120, 160, 240),
     # 'Lamp4': (160, 120, 320, 240)
 }
+
+# Log buffer init
+detection_buffer = LampDetectionBuffer(interval_seconds=60)
 
 def main():
     with ImageImpulseRunner(MODEL_PATH) as runner:
@@ -66,6 +71,7 @@ def main():
                 # else:
                 #     print(f"[{lamp_name}] → Unexpected result format:", results)
 
+
                 # Inside your loop after getting results
                 if 'bounding_boxes' in results['result']:
                     for box in results['result']['bounding_boxes']:
@@ -73,10 +79,15 @@ def main():
                         confidence = box['value']
                         
                         print(f"[Lamp1] → Detected: {label} (confidence: {confidence:.2f})")
+                        detection_buffer.add_detection(label)
 
                         # Check for "off" label during night
-                        if is_night(current_hour=20) and label.lower() == "off":
-                            log_broken_lamp(lamp_id=1, label=label)
+                        # if is_night(current_hour=20) and label.lower() == "off":
+                        #     log_broken_lamp(lamp_id=1, label=label)
+                        if datetime.now().second % 60 == 0:
+                            if detection_buffer.should_log_broken_lamp(is_night_time=True):  # or determine time by your logic
+                                log_broken_lamp(lamp_id="Lamp1",label=label, status="broken", reason="majority 'off' detections during night")
+                            detection_buffer.clear()
 
                 elif 'classification' in results['result']:
                     # In case you also support classification models
@@ -85,6 +96,11 @@ def main():
 
                     if is_night(current_hour=20) and label.lower() == "off":
                         log_broken_lamp(lamp_id=1, label=label)
+                    # Check every N seconds if we should log
+                    # if datetime.now().second % 60 == 0:
+                    #     if detection_buffer.should_log_broken_lamp(is_night_time=True):  # or determine time by your logic
+                    #         log_lamp_status(lamp_id="Lamp1", status="broken", reason="majority 'off' detections during night")
+                    #     detection_buffer.clear()
 
                 else:
                     print(f"[Lamp1] → Unexpected result format: {results}")
