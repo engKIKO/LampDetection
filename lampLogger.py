@@ -4,7 +4,7 @@ from datetime import datetime
 NIGHT_START = 18  # 6 PM
 NIGHT_END = 6     # 6 AM
 
-def is_night(current_hour=None):
+def time_is_night(current_hour=None):
     if current_hour is None:
         current_hour = datetime.now().hour
 
