@@ -2,9 +2,11 @@ from datetime import datetime
 import time
 import cv2
 import edge_impulse_linux
+import mqttHandel
 from edge_impulse_linux.image import ImageImpulseRunner
-from lampLogger import is_night, log_broken_lamp
+from lampLogger import time_is_night, log_broken_lamp
 from LampDetectionBuffer import LampDetectionBuffer
+# from mqttHandel import LDR_is_night
 
 
 MODEL_PATH = '/home/thanaphat/Documents/mahidol/IoT/LampDetection/modelfile.eim'
@@ -21,6 +23,7 @@ lamp_zones = {
 detection_buffer = LampDetectionBuffer(interval_seconds=60)
 
 def main():
+    mqttHandel.start()
     with ImageImpulseRunner(MODEL_PATH) as runner:
         model_info = runner.init()
         labels = model_info['model_parameters']['labels']
@@ -85,17 +88,46 @@ def main():
                         # if is_night(current_hour=20) and label.lower() == "off":
                         #     log_broken_lamp(lamp_id=1, label=label)
                         if datetime.now().second % 60 == 0:
-                            if detection_buffer.should_log_broken_lamp(is_night_time=True):  # or determine time by your logic
-                                log_broken_lamp(lamp_id="Lamp1",label=label, status="broken", reason="majority 'off' detections during night")
-                            detection_buffer.clear()
+                            # if detection_buffer.should_log_broken_lamp(is_night_time=True):  # or determine time by your logic
+                            #     log_broken_lamp(lamp_id="Lamp1",label=label, status="broken", reason="majority 'off' detections during night")
+                            # detection_buffer.clear()
+                            if label.lower() == "off":
+                                if time_is_night(current_hour=20):
+                                    if mqttHandel.LDR_is_night() == True:
+                                        mqttHandel.publish_log(log_broken_lamp(lamp_id=1, label=label , status="broken",reason="majority 'off' detections during night from Time and LDR"))
+                                        print("hand1")
+                                        detection_buffer.clear()
+                                    else:
+                                        mqttHandel.publish_log(log_broken_lamp(lamp_id=1, label=label ,status="broken",reason="majority 'off' detections during night from Time only"))
+                                        print("hand2")
+                                        detection_buffer.clear()
+                                elif mqttHandel.LDR_is_night() == True:
+                                    mqttHandel.publish_log(log_broken_lamp(lamp_id=1, label=label ,status="broken",reason="majority 'off' detections during night from LDR only"))
+                                    print("hand3")
+                                    detection_buffer.clear()
+                                else:
+                                    mqttHandel.publish_log(log_broken_lamp(lamp_id=1, label=label ,status="broken",reason="majority 'off' detections but not to know reason "))
+                                    print("hand4")
+                                    detection_buffer.clear()
 
                 elif 'classification' in results['result']:
                     # In case you also support classification models
                     label = max(results['result']['classification'], key=results['result']['classification'].get)
                     print(f"[Lamp1] → Classification Label: {label}")
-
-                    if is_night(current_hour=20) and label.lower() == "off":
-                        log_broken_lamp(lamp_id=1, label=label)
+                    if label.lower() == "off":
+                        if time_is_night(current_hour=20):
+                            if mqttHandel.LDR_is_night() == True:
+                                mqttHandel.publish_log(log_broken_lamp(lamp_id=1, label=label , status="broken",reason="majority 'off' detections during night from Time and LDR"))
+                                print("hand1")
+                            else:
+                                mqttHandel.publish_log(log_broken_lamp(lamp_id=1, label=label ,status="broken",reason="majority 'off' detections during night from Time only"))
+                                print("hand2")
+                        elif mqttHandel.LDR_is_night() == True:
+                            mqttHandel.publish_log(log_broken_lamp(lamp_id=1, label=label ,status="broken",reason="majority 'off' detections during night from LDR only"))
+                            print("hand3")
+                        else:
+                            mqttHandel.publish_log(log_broken_lamp(lamp_id=1, label=label ,status="broken",reason="majority 'off' detections but not to know reason "))
+                            print("hand4")
                     # Check every N seconds if we should log
                     # if datetime.now().second % 60 == 0:
                     #     if detection_buffer.should_log_broken_lamp(is_night_time=True):  # or determine time by your logic
@@ -117,6 +149,7 @@ def main():
                 break
         cap.release()
         cv2.destroyAllWindows()
+        mqttHandel.stop()
         
 
 
