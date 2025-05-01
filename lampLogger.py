@@ -11,13 +11,14 @@ bucket = os.getenv("INFLUX_BUCKET")
 org = os.getenv("INFLUX_ORG")
 token = os.getenv("INFLUX_TOKEN")
 url = os.getenv("INFLUX_URL")
+NIGHT_START = os.getenv("NIGHT_START")
+NIGHT_END = os.getenv("NIGHT_END")
 
 client = InfluxDBClient(url=url, token=token, org=org)
 write_api = client.write_api(write_options=SYNCHRONOUS)
 
-# Custom night time range
-NIGHT_START = 18  # 6 PM
-NIGHT_END = 6     # 6 AM
+
+
 
 def time_is_night(current_hour=None):
     if current_hour is None:
