@@ -10,11 +10,10 @@ BROKER = os.getenv("BROKER")
 PORT = os.getenv("BROKER_PORT")
 TOPIC_LDR = os.getenv("TOPIC_LDR")
 TOPIC_LOG = os.getenv("TOPIC_LOG")
+LDR_THRESHOLD =  os.getenv("LDR_THRESHOLD")
 
 
 
-# Low light threshold (e.g., from LDR sensor)
-LDR_THRESHOLD = 1000  # Adjust based on your LDR scale
 
 # Internal state
 _mqtt_state = {
