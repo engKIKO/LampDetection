@@ -1,17 +1,20 @@
-import paho.mqtt.client as mqtt
+import os
 
+import paho.mqtt.client as mqtt
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # MQTT Broker configuration
-BROKER = 'localhost'  # Or use your own (e.g., Mosquitto or HiveMQ cloud)
-PORT = 1883
-TOPIC_LDR = 'sensor/ldr'
-TOPIC_LOG = 'lamp/logs'
+BROKER = os.getenv("BROKER")
+PORT = os.getenv("BROKER_PORT")
+TOPIC_LDR = os.getenv("TOPIC_LDR")
+TOPIC_LOG = os.getenv("TOPIC_LOG")
 
 
 
 # Low light threshold (e.g., from LDR sensor)
-LDR_THRESHOLD = 300  # Adjust based on your LDR scale
-LDR_is_night = False  # Global state updated from LDR
+LDR_THRESHOLD = 1000  # Adjust based on your LDR scale
 
 # Internal state
 _mqtt_state = {
@@ -40,6 +43,7 @@ def LDR_is_night():
     return val < LDR_THRESHOLD
   
 def get_ldr_value():
+    print(_mqtt_state.get('ldr_value'))
     return _mqtt_state.get('ldr_value')
 
 

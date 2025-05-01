@@ -1,12 +1,16 @@
+import os
 from datetime import datetime
 import json
 from influxdb_client import InfluxDBClient, Point, WriteOptions
 from influxdb_client.client.write_api import SYNCHRONOUS
+from dotenv import load_dotenv
 
-bucket = "LampLogs"
-org = "Mahidol"
-token = "PImIAf8HD9QOlfCcuHR_5B6DN6lgrK_s0Q5GK4ihgcehoJZQgm16V5lrjzeYfUfu4YaLpTJhVtybr-StrAi7lA=="
-url = "http://localhost:8086"
+load_dotenv()
+
+bucket = os.getenv("INFLUX_BUCKET")
+org = os.getenv("INFLUX_ORG")
+token = os.getenv("INFLUX_TOKEN")
+url = os.getenv("INFLUX_URL")
 
 client = InfluxDBClient(url=url, token=token, org=org)
 write_api = client.write_api(write_options=SYNCHRONOUS)
@@ -38,12 +42,14 @@ def log_json(lamp_id, label, status="broken",reason="majority 'off' detections d
     }
     return json.dumps(jsonString)
 
-def log_lamp_status(lamp_id, status, confidence, ldr_value,level="Info"):
+def log_lamp_status(lamp_id,label, status, confidence,reason, ldr_value,level="Info"):
     point = Point("lamp_status") \
         .tag("lamp_id", lamp_id) \
-        .tag("level",level)\
-        .field("status", status) \
-        .field("confidence", confidence) \
-        .field("ldr", ldr_value) \
-        .time(datetime.now())
+        .tag("level",str(level))\
+        .tag("label",str(label))\
+        .field("status", str(status)) \
+        .field("confidence", float(confidence)) \
+        .field("ldr", int(ldr_value)) \
+        .field("reason" , str(reason))\
+        .time(datetime.utcnow())
     write_api.write(bucket=bucket, org=org, record=point)

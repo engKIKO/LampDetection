@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 import time
 import cv2
@@ -7,10 +8,11 @@ from edge_impulse_linux.image import ImageImpulseRunner
 from lampLogger import time_is_night, log_broken_lamp
 from LampDetectionBuffer import LampDetectionBuffer
 import lampLogger
-# from mqttHandel import LDR_is_night
+from dotenv import load_dotenv
 
+load_dotenv()
 
-MODEL_PATH = '/home/thanaphat/Documents/mahidol/IoT/LampDetection/modelfile.eim'
+MODEL_PATH = os.getenv("MODEL_PATH")
 
 # Define camera zones for each lamp (update these based on your camera layout)
 lamp_zones = {

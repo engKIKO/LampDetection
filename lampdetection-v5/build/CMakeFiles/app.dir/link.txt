@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/app.dir/source/main.cpp.o "CMakeFiles/app.dir/tflite-model/tflite_learn_3_compiled.cpp.o" -o app 
